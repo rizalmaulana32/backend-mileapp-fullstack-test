@@ -1,0 +1,37 @@
+{
+  "name": "backend-mileapp-fullstack-test",
+  "version": "1.0.0",
+  "description": "Task Management API with JWT authentication",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server-inmemory.js",
+    "start:mongo": "node dist/server.js",
+    "dev": "tsx watch src/server-inmemory.ts",
+    "dev:mongo": "tsx watch src/server.ts"
+  },
+  "keywords": [
+    "express",
+    "jwt",
+    "mongodb",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

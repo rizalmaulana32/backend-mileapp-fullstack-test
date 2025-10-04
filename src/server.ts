@@ -1,0 +1,193 @@
+import express, { Request, Response } from 'express'
+import cors from 'cors'
+import jwt from 'jsonwebtoken'
+import mongoose from 'mongoose'
+import dotenv from 'dotenv'
+import Task from './models/Task.js'
+import { authenticateToken, AuthRequest } from './middleware/auth.js'
+
+dotenv.config()
+
+const app = express()
+const PORT = process.env.PORT || 3000
+
+app.use(cors())
+app.use(express.json())
+
+mongoose.connect(process.env.MONGODB_URI as string)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((err) => console.error('MongoDB connection error:', err))
+
+const DEMO_USER = {
+  username: 'admin',
+  password: 'admin123'
+}
+
+app.post('/login', (req: Request, res: Response): void => {
+  try {
+    const { username, password } = req.body
+
+    if (!username || !password) {
+      res.status(400).json({ message: 'Username and password are required' })
+      return
+    }
+
+    if (username === DEMO_USER.username && password === DEMO_USER.password) {
+      const token = jwt.sign(
+        { username },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '24h' }
+      )
+
+      res.status(200).json({
+        message: 'Login successful',
+        token
+      })
+      return
+    }
+
+    res.status(401).json({ message: 'Invalid username or password' })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+app.get('/tasks', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      status,
+      title,
+      sort = 'createdAt',
+      order = 'desc',
+      page = '1',
+      limit = '10'
+    } = req.query
+
+    const filter: any = {}
+    if (status && typeof status === 'string') {
+      filter.status = status
+    }
+    if (title && typeof title === 'string') {
+      filter.$text = { $search: title }
+    }
+
+    const sortOrder = order === 'asc' ? 1 : -1
+    const sortObj: Record<string, 1 | -1> = { [sort as string]: sortOrder as 1 | -1 }
+
+    const pageNum = parseInt(page as string)
+    const limitNum = parseInt(limit as string)
+    const skip = (pageNum - 1) * limitNum
+
+    const tasks = await Task.find(filter)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum)
+
+    const total = await Task.countDocuments(filter)
+
+    res.status(200).json({
+      data: tasks,
+      meta: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching tasks:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+app.post('/tasks', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { title, description, status } = req.body
+
+    if (!title || !description) {
+      res.status(400).json({ message: 'Title and description are required' })
+      return
+    }
+
+    const task = new Task({
+      title,
+      description,
+      status: status || 'pending'
+    })
+
+    await task.save()
+
+    res.status(201).json({
+      message: 'Task created successfully',
+      data: task
+    })
+  } catch (error) {
+    console.error('Error creating task:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+app.put('/tasks/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+    const { title, description, status } = req.body
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ message: 'Invalid task ID' })
+      return
+    }
+
+    const task = await Task.findById(id)
+
+    if (!task) {
+      res.status(404).json({ message: 'Task not found' })
+      return
+    }
+
+    if (title) task.title = title
+    if (description) task.description = description
+    if (status) task.status = status
+    task.updatedAt = new Date()
+
+    await task.save()
+
+    res.status(200).json({
+      message: 'Task updated successfully',
+      data: task
+    })
+  } catch (error) {
+    console.error('Error updating task:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+app.delete('/tasks/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ message: 'Invalid task ID' })
+      return
+    }
+
+    const task = await Task.findByIdAndDelete(id)
+
+    if (!task) {
+      res.status(404).json({ message: 'Task not found' })
+      return
+    }
+
+    res.status(204).send()
+  } catch (error) {
+    console.error('Error deleting task:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+})
+
+app.get('/health', (req: Request, res: Response): void => {
+  res.status(200).json({ status: 'OK' })
+})
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+})
