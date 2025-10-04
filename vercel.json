@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/server-inmemory.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/server-inmemory.js"
+    }
+  ]
+}

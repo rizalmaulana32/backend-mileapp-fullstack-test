@@ -2,7 +2,7 @@
   "name": "backend-mileapp-fullstack-test",
   "version": "1.0.0",
   "description": "Task Management API with JWT authentication",
-  "main": "dist/server.js",
+  "main": "dist/server-inmemory.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
